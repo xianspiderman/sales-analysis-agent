@@ -1,0 +1,16 @@
+target/
+.idea/
+.vscode/
+*.iml
+*.log
+logs/
+.env
+.env.*
+!.env.example
+application-local.yml
+application-secret.yml
+*.key
+*.pem
+.DS_Store
+Thumbs.db
+

@@ -219,6 +219,9 @@ AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat
 | `POST /agentscope/chat` | AgentScope ReActAgent 同步问答 |
 | `POST /agentscope/chat/stream` | AgentScope 事件流，包含 `agent_start`、`model_start`、`model_end`、`token`、`tool_start`、`tool_end`、`summary`、`done` |
 | `DELETE /agentscope/session/{sessionId}` | 清理当前用户的 AgentScope 会话状态 |
+| `POST /agentscope/team/chat` | Supervisor 调度销售专家的多 Agent 同步问答 |
+| `POST /agentscope/team/chat/stream` | 多 Agent SSE 问答，可观察专家委派工具事件和汇总 |
+| `DELETE /agentscope/team/session/{sessionId}` | 清理当前用户的多 Agent Supervisor 会话状态 |
 
 请求体与旧接口保持一致：
 
@@ -231,7 +234,22 @@ AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat
 
 AgentScope 使用 DashScope 原生模型扩展，并通过 MySQL `AgentStateStore` 保存状态；首次启动时默认自动初始化所需表。相关参数位于 `sales-agent.agentscope`，仍复用 `DASHSCOPE_API_KEY`。该链路目前定位为技术栈验证入口，后续可在对比工具调用稳定性、流式事件和会话恢复效果后，再逐步决定是否迁移默认入口。
 
-第二次增量通过 AgentScope 2.0 `MiddlewareBase` 采集 Agent、Reasoning、Model 和 Tool 四层执行数据。同步接口的 `execution` 字段以及流式接口的 `summary` 事件会返回请求 ID、耗时、推理轮次、模型/工具调用次数、工具名称和 Token 用量。指标通过现有 Actuator 暴露，名称以 `agentscope.*` 开头；用户问题、工具参数和查询结果不会写入指标或执行摘要。
+第二次增量通过 AgentScope 2.0 `MiddlewareBase` 采集 Agent、Reasoning、Model 和 Tool 四层执行数据。同步接口的 `execution` 字段以及流式接口的 `summary` 事件会返回请求 ID、根 Agent、耗时、专家调用情况、推理轮次、模型/工具调用次数、工具名称和 Token 用量。指标通过现有 Actuator 暴露，名称以 `agentscope.*` 开头；用户问题、工具参数和查询结果不会写入指标或执行摘要。
+
+第三次增量新增独立的多 Agent 团队入口，原有单 Agent 接口保持不变：
+
+```mermaid
+flowchart LR
+    Client["/agentscope/team/*"] --> Supervisor["Sales Team Supervisor"]
+    Supervisor -->|订单、汇总、排名、趋势| Analyst["Data Analyst<br/>8 个分析工具"]
+    Supervisor -->|折线、柱状、饼图| Chart["Chart Specialist<br/>3 个图表工具"]
+    Supervisor -->|异常扫描与解释| Anomaly["Anomaly Specialist<br/>1 个异常工具"]
+    Analyst --> Existing["现有工具、DataScope、缓存与查询服务"]
+    Chart --> Existing
+    Anomaly --> Existing
+```
+
+Supervisor 不直接持有销售数据工具，只能通过 `SubAgentTool` 委派任务。三个专家继续复用请求中的 `RuntimeContext`，所以登录用户、会话和数据权限与单 Agent 链路一致；各专家只注册职责所需的最小工具集合。团队会话在状态存储中增加 `team:` 命名空间，避免与相同客户端 `sessionId` 的单 Agent 会话互相覆盖。多目标问题可以触发多个专家，适合与 `/agentscope/chat` 对比答案质量、耗时、模型调用次数和 Token 成本。团队参数位于 `sales-agent.agentscope.team`。
 
 ## 演示截图
 

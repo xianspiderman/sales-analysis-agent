@@ -14,8 +14,8 @@ import io.agentscope.core.event.TextBlockDeltaEvent;
 import io.agentscope.core.event.ToolCallStartEvent;
 import io.agentscope.core.event.ToolResultEndEvent;
 import io.agentscope.core.message.UserMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,15 +26,33 @@ import java.util.UUID;
 
 /** AgentScope ReActAgent 的应用服务，负责建立用户隔离的 RuntimeContext。 */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AgentScopeSalesService {
 
     private final ReActAgent agentScopeSalesAgent;
+    private final ReActAgent agentScopeSalesTeamAgent;
+
+    public AgentScopeSalesService(
+            @Qualifier("agentScopeSalesAgent") ReActAgent agentScopeSalesAgent,
+            @Qualifier("agentScopeSalesTeamAgent") ReActAgent agentScopeSalesTeamAgent) {
+        this.agentScopeSalesAgent = agentScopeSalesAgent;
+        this.agentScopeSalesTeamAgent = agentScopeSalesTeamAgent;
+    }
 
     public Mono<AgentScopeChatResult> chat(String sessionId, String message) {
-        Invocation invocation = invocation(sessionId);
-        return agentScopeSalesAgent
+        return chat(agentScopeSalesAgent, sessionId, message);
+    }
+
+    public Mono<AgentScopeChatResult> teamChat(String sessionId, String message) {
+        return chat(agentScopeSalesTeamAgent, sessionId, message);
+    }
+
+    private Mono<AgentScopeChatResult> chat(
+            ReActAgent agent,
+            String sessionId,
+            String message) {
+        Invocation invocation = invocation(sessionId, agent.getName());
+        return agent
                 .call(List.of(new UserMessage(withCurrentDate(message))), invocation.runtimeContext())
                 .switchIfEmpty(Mono.error(new IllegalStateException("AgentScope 未返回响应")))
                 .map(result -> new AgentScopeChatResult(
@@ -43,25 +61,46 @@ public class AgentScopeSalesService {
     }
 
     public Flux<AgentScopeStreamEvent> stream(String sessionId, String message) {
-        Invocation invocation = invocation(sessionId);
-        return agentScopeSalesAgent
+        return stream(agentScopeSalesAgent, sessionId, message);
+    }
+
+    public Flux<AgentScopeStreamEvent> teamStream(String sessionId, String message) {
+        return stream(agentScopeSalesTeamAgent, sessionId, message);
+    }
+
+    private Flux<AgentScopeStreamEvent> stream(
+            ReActAgent agent,
+            String sessionId,
+            String message) {
+        Invocation invocation = invocation(sessionId, agent.getName());
+        return agent
                 .streamEvents(new UserMessage(withCurrentDate(message)), invocation.runtimeContext())
                 .concatMap(agentEvent -> mapEvents(agentEvent, invocation.tracker()))
                 .onErrorResume(error -> {
-                    log.error("AgentScope 流式调用失败: sessionId={}", sessionId, error);
+                    log.error(
+                            "AgentScope 流式调用失败: agent={}, sessionId={}",
+                            agent.getName(), sessionId, error);
                     return Flux.just(new AgentScopeStreamEvent("error", "服务暂时不可用，请稍后重试"));
                 });
     }
 
     public Mono<Void> clearSession(String sessionId) {
-        Invocation invocation = invocation(sessionId);
-        return Mono.fromRunnable(() -> agentScopeSalesAgent.clearContext(
+        return clearSession(agentScopeSalesAgent, sessionId);
+    }
+
+    public Mono<Void> clearTeamSession(String sessionId) {
+        return clearSession(agentScopeSalesTeamAgent, sessionId);
+    }
+
+    private Mono<Void> clearSession(ReActAgent agent, String sessionId) {
+        Invocation invocation = invocation(sessionId, agent.getName());
+        return Mono.fromRunnable(() -> agent.clearContext(
                         invocation.runtimeContext().getUserId(),
                         invocation.runtimeContext().getSessionId()))
                 .then();
     }
 
-    private Invocation invocation(String sessionId) {
+    private Invocation invocation(String sessionId, String rootAgentName) {
         UserContext.UserInfo user = UserContext.requireCurrent();
         // 复用旧会话 ID 规则完成空值和长度校验，但 AgentScope 中仍分别存储 userId 与 sessionId。
         UserScopedMemoryId.from(user, sessionId);
@@ -69,10 +108,14 @@ public class AgentScopeSalesService {
         SalesAgentRuntimeContext salesContext =
                 new SalesAgentRuntimeContext(user, DataScope.from(user));
         String requestId = UUID.randomUUID().toString();
-        AgentScopeExecutionTracker tracker = new AgentScopeExecutionTracker(requestId);
+        AgentScopeExecutionTracker tracker =
+                new AgentScopeExecutionTracker(requestId, rootAgentName);
+        String stateSessionId = AgentScopeSalesTeamConfig.TEAM_AGENT_NAME.equals(rootAgentName)
+                ? "team:" + sessionId
+                : sessionId;
         RuntimeContext runtimeContext = RuntimeContext.builder()
                 .userId(user.userId().toString())
-                .sessionId(sessionId)
+                .sessionId(stateSessionId)
                 .put(SalesAgentRuntimeContext.class, salesContext)
                 .put(AgentScopeExecutionTracker.class, tracker)
                 .put("request_id", requestId)

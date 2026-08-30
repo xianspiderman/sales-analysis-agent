@@ -11,19 +11,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 final class AgentScopeExecutionTracker {
 
     private final String requestId;
+    private final String rootAgentName;
     private final long startedAtNanos = System.nanoTime();
     private final AtomicInteger reasoningRounds = new AtomicInteger();
+    private final AtomicInteger specialistCalls = new AtomicInteger();
     private final AtomicInteger modelCalls = new AtomicInteger();
     private final AtomicInteger toolCalls = new AtomicInteger();
     private final AtomicInteger inputTokens = new AtomicInteger();
     private final AtomicInteger outputTokens = new AtomicInteger();
     private final AtomicInteger cachedTokens = new AtomicInteger();
     private final Set<String> toolNames = new LinkedHashSet<>();
+    private final Set<String> specialistNames = new LinkedHashSet<>();
     private volatile String status = "running";
     private volatile long finishedAtNanos;
 
-    AgentScopeExecutionTracker(String requestId) {
+    AgentScopeExecutionTracker(String requestId, String rootAgentName) {
         this.requestId = requestId;
+        this.rootAgentName = rootAgentName;
+    }
+
+    boolean isRootAgent(String agentName) {
+        return rootAgentName.equals(agentName);
+    }
+
+    synchronized void specialistStarted(String agentName) {
+        specialistCalls.incrementAndGet();
+        specialistNames.add(agentName);
     }
 
     void reasoningStarted() {
@@ -61,8 +74,11 @@ final class AgentScopeExecutionTracker {
         long end = finishedAtNanos == 0L ? System.nanoTime() : finishedAtNanos;
         return new AgentScopeExecutionSummary(
                 requestId,
+                rootAgentName,
                 status,
                 (end - startedAtNanos) / 1_000_000,
+                specialistCalls.get(),
+                List.copyOf(specialistNames),
                 reasoningRounds.get(),
                 modelCalls.get(),
                 toolCalls.get(),

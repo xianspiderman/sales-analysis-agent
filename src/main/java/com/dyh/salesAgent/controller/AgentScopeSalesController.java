@@ -46,4 +46,28 @@ public class AgentScopeSalesController {
         return agentScopeSalesService.clearSession(sessionId)
                 .thenReturn(ResponseEntity.ok().build());
     }
+
+    @PostMapping("/team/chat")
+    public Mono<ResponseEntity<AgentScopeChatResponse>> teamChat(
+            @Valid @RequestBody ChatRequest request) {
+        return agentScopeSalesService.teamChat(request.sessionId(), request.message())
+                .map(result -> ResponseEntity.ok(new AgentScopeChatResponse(
+                        request.sessionId(), result.reply(), result.execution())));
+    }
+
+    @PostMapping(value = "/team/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<Object>> teamChatStream(
+            @Valid @RequestBody ChatRequest request) {
+        return agentScopeSalesService.teamStream(request.sessionId(), request.message())
+                .map(event -> ServerSentEvent.<Object>builder()
+                        .event(event.event())
+                        .data(event.data())
+                        .build());
+    }
+
+    @DeleteMapping("/team/session/{sessionId}")
+    public Mono<ResponseEntity<Void>> clearTeamSession(@PathVariable String sessionId) {
+        return agentScopeSalesService.clearTeamSession(sessionId)
+                .thenReturn(ResponseEntity.ok().build());
+    }
 }

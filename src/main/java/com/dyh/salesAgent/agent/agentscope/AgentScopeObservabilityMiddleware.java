@@ -40,17 +40,28 @@ public class AgentScopeObservabilityMiddleware implements MiddlewareBase {
             RuntimeContext context,
             AgentInput input,
             Function<AgentInput, Flux<AgentEvent>> next) {
-        return timed("agent", next.apply(input))
-                .doOnComplete(() -> tracker(context).complete("success"))
-                .doOnError(error -> tracker(context).complete("error"))
+        AgentScopeExecutionTracker tracker = tracker(context);
+        boolean rootAgent = tracker.isRootAgent(agent.getName());
+        if (!rootAgent) {
+            tracker.specialistStarted(agent.getName());
+        }
+
+        Flux<AgentEvent> observed = timed(rootAgent ? "agent" : "specialist", next.apply(input));
+        if (!rootAgent) {
+            return observed;
+        }
+        return observed
+                .doOnComplete(() -> tracker.complete("success"))
+                .doOnError(error -> tracker.complete("error"))
                 .doFinally(signal -> {
                     if (signal == SignalType.CANCEL) {
-                        tracker(context).complete("cancelled");
+                        tracker.complete("cancelled");
                     }
-                    AgentScopeExecutionSummary summary = tracker(context).snapshot();
+                    AgentScopeExecutionSummary summary = tracker.snapshot();
                     log.info(
-                            "AgentScope 调用完成 | requestId={} | status={} | durationMs={} | reasoning={} | modelCalls={} | toolCalls={} | inputTokens={} | outputTokens={}",
-                            summary.requestId(), summary.status(), summary.durationMs(),
+                            "AgentScope 调用完成 | requestId={} | rootAgent={} | status={} | durationMs={} | specialists={} | reasoning={} | modelCalls={} | toolCalls={} | inputTokens={} | outputTokens={}",
+                            summary.requestId(), summary.rootAgent(), summary.status(),
+                            summary.durationMs(), summary.specialistCalls(),
                             summary.reasoningRounds(), summary.modelCalls(), summary.toolCalls(),
                             summary.inputTokens(), summary.outputTokens());
                 });

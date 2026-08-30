@@ -90,6 +90,9 @@ sales-agent:
     max-iters: 10
     state:
       initialize-schema: true
+    team:
+      supervisor-max-iters: 8
+      specialist-max-iters: 6
 
 logging:
   level:

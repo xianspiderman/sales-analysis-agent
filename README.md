@@ -13,6 +13,7 @@
 - 权限缓存 Key：缓存 Key 显式包含 COMPANY、REGION 或 REP 数据范围。
 - 对话记忆：Agent 会话记录持久化到 MySQL，并按登录用户与客户端 `sessionId` 隔离。
 - 可观测性：记录工具调用、执行耗时和 Token 使用指标。
+- 双 Agent 编排链路：保留 LangChain4j 生产链路，并提供 AgentScope Java 2.0.1 实验链路用于增量演进。
 
 ## 技术栈
 
@@ -20,7 +21,7 @@
 |---|---|
 | 开发语言 | Java 25 |
 | Web 框架 | Spring Boot 3.5.11 |
-| Agent 框架 | LangChain4j 1.12.1 |
+| Agent 框架 | LangChain4j 1.12.1 / AgentScope Java 2.0.1 |
 | 模型接口 | OpenAI 兼容接口 / DashScope |
 | 数据库 | MySQL 8 |
 | ORM | Spring Data JPA / Hibernate |
@@ -208,6 +209,82 @@ GET http://localhost:8087/actuator/health
 完整测试步骤和可导入 ApiPost 的 cURL 位于：
 
 - [ApiPost 接口测试文档](docs/ApiPost接口测试.md)
+
+## AgentScope Java 增量链路
+
+AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat/stream` 不变。新链路复用已有 12 个销售工具及其参数校验、Redis 缓存、数据权限和查询实现，避免在框架迁移阶段复制业务逻辑。
+
+| 接口 | 用途 |
+|---|---|
+| `POST /agentscope/chat` | AgentScope ReActAgent 同步问答 |
+| `POST /agentscope/chat/stream` | AgentScope 事件流，包含 `agent_start`、`model_start`、`model_end`、`token`、`tool_start`、`tool_end`、`summary`、`done` |
+| `DELETE /agentscope/session/{sessionId}` | 清理当前用户的 AgentScope 会话状态 |
+| `POST /agentscope/team/chat` | Supervisor 调度销售专家的多 Agent 同步问答 |
+| `POST /agentscope/team/chat/stream` | 多 Agent SSE 问答，可观察专家委派工具事件和汇总 |
+| `DELETE /agentscope/team/session/{sessionId}` | 清理当前用户的多 Agent Supervisor 会话状态 |
+
+请求体与旧接口保持一致：
+
+```json
+{
+  "sessionId": "agentscope-demo-001",
+  "message": "统计今年各大区销售额并生成柱状图"
+}
+```
+
+AgentScope 使用 DashScope 原生模型扩展，并通过 MySQL `AgentStateStore` 保存状态；首次启动时默认自动初始化所需表。相关参数位于 `sales-agent.agentscope`，仍复用 `DASHSCOPE_API_KEY`。该链路目前定位为技术栈验证入口，后续可在对比工具调用稳定性、流式事件和会话恢复效果后，再逐步决定是否迁移默认入口。
+
+第二次增量通过 AgentScope 2.0 `MiddlewareBase` 采集 Agent、Reasoning、Model 和 Tool 四层执行数据。同步接口的 `execution` 字段以及流式接口的 `summary` 事件会返回请求 ID、根 Agent、耗时、专家调用情况、推理轮次、模型/工具调用次数、工具名称和 Token 用量。指标通过现有 Actuator 暴露，名称以 `agentscope.*` 开头；用户问题、工具参数和查询结果不会写入指标或执行摘要。
+
+第三次增量新增独立的多 Agent 团队入口，原有单 Agent 接口保持不变：
+
+```mermaid
+flowchart LR
+    Client["/agentscope/team/*"] --> Supervisor["Sales Team Supervisor"]
+    Supervisor -->|订单、汇总、排名、趋势| Analyst["Data Analyst<br/>8 个分析工具"]
+    Supervisor -->|折线、柱状、饼图| Chart["Chart Specialist<br/>3 个图表工具"]
+    Supervisor -->|异常扫描与解释| Anomaly["Anomaly Specialist<br/>1 个异常工具"]
+    Analyst --> Existing["现有工具、DataScope、缓存与查询服务"]
+    Chart --> Existing
+    Anomaly --> Existing
+```
+
+Supervisor 不直接持有销售数据工具，只能通过 `SubAgentTool` 委派任务。三个专家继续复用请求中的 `RuntimeContext`，所以登录用户、会话和数据权限与单 Agent 链路一致；各专家只注册职责所需的最小工具集合。团队会话在状态存储中增加 `team:` 命名空间，避免与相同客户端 `sessionId` 的单 Agent 会话互相覆盖。多目标问题可以触发多个专家，适合与 `/agentscope/chat` 对比答案质量、耗时、模型调用次数和 Token 成本。团队参数位于 `sales-agent.agentscope.team`。
+
+## 统一入口与切换策略
+
+第四次增量新增 `/analysis` 统一入口，原有三套接口继续保留：
+
+| 接口 | 用途 |
+|---|---|
+| `POST /analysis/chat` | 按配置或请求参数选择 Agent 模式的同步问答 |
+| `POST /analysis/chat/stream` | 统一 SSE 问答，首个 `route` 事件说明实际路由 |
+| `DELETE /analysis/session/{sessionId}?mode=...` | 清理指定模式的会话 |
+
+请求中的 `mode` 可选：
+
+```json
+{
+  "sessionId": "routing-demo-001",
+  "message": "统计今年各大区销售额并生成柱状图",
+  "mode": "AGENTSCOPE_TEAM"
+}
+```
+
+支持的模式为 `LANGCHAIN4J`、`AGENTSCOPE_SINGLE` 和 `AGENTSCOPE_TEAM`。未传 `mode` 时使用以下配置；关闭 `allow-request-override` 后，客户端传入的模式会被忽略：
+
+```yaml
+sales-agent:
+  routing:
+    default-mode: AGENTSCOPE_TEAM
+    fallback-enabled: true
+    fallback-mode: LANGCHAIN4J
+    allow-request-override: true
+```
+
+同步调用在主链路失败时可以直接切换到降级模式。流式调用只有在尚未输出 `token`、尚未出现 `tool_start` 时才会降级；一旦响应或工具执行已经开始，只返回 `error`，避免混合两套回答或重复工具执行。同步响应通过 `route` 字段说明请求模式、实际模式和是否降级；SSE 使用 `route` / `fallback` 事件表达相同信息。
+
+统一路由新增 `sales.agent.routing.requests`、`sales.agent.routing.fallbacks` 和 `sales.agent.routing.duration` 指标，可通过现有 `/actuator/metrics` 查看。推荐先保持三条链路并行，通过这些指标和 AgentScope `execution` 摘要比较效果与成本，再决定是否将默认模式长期切换到 AgentScope。
 
 ## 演示截图
 

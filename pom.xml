@@ -22,6 +22,7 @@
         <maven.compiler.proc>full</maven.compiler.proc>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <langchain4j.version>1.12.1</langchain4j.version>
+        <agentscope.version>2.0.1</agentscope.version>
         <satoken.version>1.39.0</satoken.version>
     </properties>
     <dependencyManagement>
@@ -88,6 +89,22 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+        </dependency>
+        <!-- AgentScope Java 增量链路：保留 LangChain4j，新增 ReActAgent、DashScope 原生模型和 MySQL 状态存储。 -->
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-core</artifactId>
+            <version>${agentscope.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-extensions-model-dashscope</artifactId>
+            <version>${agentscope.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-extensions-mysql</artifactId>
+            <version>${agentscope.version}</version>
         </dependency>
         <!-- Sa-Token 权限框架（第 26 节） -->
         <dependency>

@@ -61,21 +61,36 @@ public class AgentScopeSalesService {
     }
 
     public Flux<AgentScopeStreamEvent> stream(String sessionId, String message) {
-        return stream(agentScopeSalesAgent, sessionId, message);
+        return recoverStream(streamRaw(sessionId, message), agentScopeSalesAgent, sessionId);
     }
 
     public Flux<AgentScopeStreamEvent> teamStream(String sessionId, String message) {
-        return stream(agentScopeSalesTeamAgent, sessionId, message);
+        return recoverStream(teamStreamRaw(sessionId, message), agentScopeSalesTeamAgent, sessionId);
     }
 
-    private Flux<AgentScopeStreamEvent> stream(
+    public Flux<AgentScopeStreamEvent> streamRaw(String sessionId, String message) {
+        return streamRaw(agentScopeSalesAgent, sessionId, message);
+    }
+
+    public Flux<AgentScopeStreamEvent> teamStreamRaw(String sessionId, String message) {
+        return streamRaw(agentScopeSalesTeamAgent, sessionId, message);
+    }
+
+    private Flux<AgentScopeStreamEvent> streamRaw(
             ReActAgent agent,
             String sessionId,
             String message) {
         Invocation invocation = invocation(sessionId, agent.getName());
         return agent
                 .streamEvents(new UserMessage(withCurrentDate(message)), invocation.runtimeContext())
-                .concatMap(agentEvent -> mapEvents(agentEvent, invocation.tracker()))
+                .concatMap(agentEvent -> mapEvents(agentEvent, invocation.tracker()));
+    }
+
+    private Flux<AgentScopeStreamEvent> recoverStream(
+            Flux<AgentScopeStreamEvent> source,
+            ReActAgent agent,
+            String sessionId) {
+        return source
                 .onErrorResume(error -> {
                     log.error(
                             "AgentScope 流式调用失败: agent={}, sessionId={}",

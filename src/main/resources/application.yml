@@ -93,6 +93,11 @@ sales-agent:
     team:
       supervisor-max-iters: 8
       specialist-max-iters: 6
+  routing:
+    default-mode: AGENTSCOPE_TEAM
+    fallback-enabled: true
+    fallback-mode: LANGCHAIN4J
+    allow-request-override: true
 
 logging:
   level:

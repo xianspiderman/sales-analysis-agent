@@ -251,6 +251,41 @@ flowchart LR
 
 Supervisor 不直接持有销售数据工具，只能通过 `SubAgentTool` 委派任务。三个专家继续复用请求中的 `RuntimeContext`，所以登录用户、会话和数据权限与单 Agent 链路一致；各专家只注册职责所需的最小工具集合。团队会话在状态存储中增加 `team:` 命名空间，避免与相同客户端 `sessionId` 的单 Agent 会话互相覆盖。多目标问题可以触发多个专家，适合与 `/agentscope/chat` 对比答案质量、耗时、模型调用次数和 Token 成本。团队参数位于 `sales-agent.agentscope.team`。
 
+## 统一入口与切换策略
+
+第四次增量新增 `/analysis` 统一入口，原有三套接口继续保留：
+
+| 接口 | 用途 |
+|---|---|
+| `POST /analysis/chat` | 按配置或请求参数选择 Agent 模式的同步问答 |
+| `POST /analysis/chat/stream` | 统一 SSE 问答，首个 `route` 事件说明实际路由 |
+| `DELETE /analysis/session/{sessionId}?mode=...` | 清理指定模式的会话 |
+
+请求中的 `mode` 可选：
+
+```json
+{
+  "sessionId": "routing-demo-001",
+  "message": "统计今年各大区销售额并生成柱状图",
+  "mode": "AGENTSCOPE_TEAM"
+}
+```
+
+支持的模式为 `LANGCHAIN4J`、`AGENTSCOPE_SINGLE` 和 `AGENTSCOPE_TEAM`。未传 `mode` 时使用以下配置；关闭 `allow-request-override` 后，客户端传入的模式会被忽略：
+
+```yaml
+sales-agent:
+  routing:
+    default-mode: AGENTSCOPE_TEAM
+    fallback-enabled: true
+    fallback-mode: LANGCHAIN4J
+    allow-request-override: true
+```
+
+同步调用在主链路失败时可以直接切换到降级模式。流式调用只有在尚未输出 `token`、尚未出现 `tool_start` 时才会降级；一旦响应或工具执行已经开始，只返回 `error`，避免混合两套回答或重复工具执行。同步响应通过 `route` 字段说明请求模式、实际模式和是否降级；SSE 使用 `route` / `fallback` 事件表达相同信息。
+
+统一路由新增 `sales.agent.routing.requests`、`sales.agent.routing.fallbacks` 和 `sales.agent.routing.duration` 指标，可通过现有 `/actuator/metrics` 查看。推荐先保持三条链路并行，通过这些指标和 AgentScope `execution` 摘要比较效果与成本，再决定是否将默认模式长期切换到 AgentScope。
+
 ## 演示截图
 
 以下截图来自本地 ApiPost 与运行日志演示；发布前请确认截图中没有 Token、密码或 API Key。

@@ -13,6 +13,7 @@
 - 权限缓存 Key：缓存 Key 显式包含 COMPANY、REGION 或 REP 数据范围。
 - 对话记忆：Agent 会话记录持久化到 MySQL，并按登录用户与客户端 `sessionId` 隔离。
 - 可观测性：记录工具调用、执行耗时和 Token 使用指标。
+- 双 Agent 编排链路：保留 LangChain4j 生产链路，并提供 AgentScope Java 2.0.1 实验链路用于增量演进。
 
 ## 技术栈
 
@@ -20,7 +21,7 @@
 |---|---|
 | 开发语言 | Java 25 |
 | Web 框架 | Spring Boot 3.5.11 |
-| Agent 框架 | LangChain4j 1.12.1 |
+| Agent 框架 | LangChain4j 1.12.1 / AgentScope Java 2.0.1 |
 | 模型接口 | OpenAI 兼容接口 / DashScope |
 | 数据库 | MySQL 8 |
 | ORM | Spring Data JPA / Hibernate |
@@ -208,6 +209,27 @@ GET http://localhost:8087/actuator/health
 完整测试步骤和可导入 ApiPost 的 cURL 位于：
 
 - [ApiPost 接口测试文档](docs/ApiPost接口测试.md)
+
+## AgentScope Java 增量链路
+
+AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat/stream` 不变。新链路复用已有 12 个销售工具及其参数校验、Redis 缓存、数据权限和查询实现，避免在框架迁移阶段复制业务逻辑。
+
+| 接口 | 用途 |
+|---|---|
+| `POST /agentscope/chat` | AgentScope ReActAgent 同步问答 |
+| `POST /agentscope/chat/stream` | AgentScope 事件流，包含 `agent_start`、`token`、`tool_start`、`tool_end`、`done` |
+| `DELETE /agentscope/session/{sessionId}` | 清理当前用户的 AgentScope 会话状态 |
+
+请求体与旧接口保持一致：
+
+```json
+{
+  "sessionId": "agentscope-demo-001",
+  "message": "统计今年各大区销售额并生成柱状图"
+}
+```
+
+AgentScope 使用 DashScope 原生模型扩展，并通过 MySQL `AgentStateStore` 保存状态；首次启动时默认自动初始化所需表。相关参数位于 `sales-agent.agentscope`，仍复用 `DASHSCOPE_API_KEY`。该链路目前定位为技术栈验证入口，后续可在对比工具调用稳定性、流式事件和会话恢复效果后，再逐步决定是否迁移默认入口。
 
 ## 演示截图
 

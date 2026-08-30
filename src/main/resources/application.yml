@@ -83,6 +83,13 @@ sales-agent:
   tool:
     anomaly-threshold-days: 5
     trend-drop-threshold: 0.3
+  agentscope:
+    model-name: qwen-max
+    temperature: 0.1
+    max-tokens: 2048
+    max-iters: 10
+    state:
+      initialize-schema: true
 
 logging:
   level:

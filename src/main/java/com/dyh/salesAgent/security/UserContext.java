@@ -1,4 +1,7 @@
 package com.dyh.salesAgent.security;
+
+import java.util.function.Supplier;
+
 public class UserContext {
     private static final ThreadLocal<UserInfo> HOLDER = new ThreadLocal<>();
 
@@ -36,6 +39,24 @@ public class UserContext {
                 clear();
             } else {
                 // 进入本方法前已有身份时恢复它，使 runWith 可以安全嵌套。
+                set(previous);
+            }
+        }
+    }
+
+    /**
+     * 在指定身份下执行有返回值的动作。
+     * AgentScope 工具通过 RuntimeContext 获取身份后，用此方法桥接尚未解耦的旧工具实现。
+     */
+    public static <T> T callWith(UserInfo user, Supplier<T> action) {
+        UserInfo previous = HOLDER.get();
+        try {
+            set(user);
+            return action.get();
+        } finally {
+            if (previous == null) {
+                clear();
+            } else {
                 set(previous);
             }
         }

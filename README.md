@@ -217,7 +217,7 @@ AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat
 | 接口 | 用途 |
 |---|---|
 | `POST /agentscope/chat` | AgentScope ReActAgent 同步问答 |
-| `POST /agentscope/chat/stream` | AgentScope 事件流，包含 `agent_start`、`token`、`tool_start`、`tool_end`、`done` |
+| `POST /agentscope/chat/stream` | AgentScope 事件流，包含 `agent_start`、`model_start`、`model_end`、`token`、`tool_start`、`tool_end`、`summary`、`done` |
 | `DELETE /agentscope/session/{sessionId}` | 清理当前用户的 AgentScope 会话状态 |
 
 请求体与旧接口保持一致：
@@ -230,6 +230,8 @@ AgentScope Java 采用并行接入方式，现有 `/agent/chat` 与 `/agent/chat
 ```
 
 AgentScope 使用 DashScope 原生模型扩展，并通过 MySQL `AgentStateStore` 保存状态；首次启动时默认自动初始化所需表。相关参数位于 `sales-agent.agentscope`，仍复用 `DASHSCOPE_API_KEY`。该链路目前定位为技术栈验证入口，后续可在对比工具调用稳定性、流式事件和会话恢复效果后，再逐步决定是否迁移默认入口。
+
+第二次增量通过 AgentScope 2.0 `MiddlewareBase` 采集 Agent、Reasoning、Model 和 Tool 四层执行数据。同步接口的 `execution` 字段以及流式接口的 `summary` 事件会返回请求 ID、耗时、推理轮次、模型/工具调用次数、工具名称和 Token 用量。指标通过现有 Actuator 暴露，名称以 `agentscope.*` 开头；用户问题、工具参数和查询结果不会写入指标或执行摘要。
 
 ## 演示截图
 

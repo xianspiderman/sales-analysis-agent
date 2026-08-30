@@ -8,6 +8,8 @@ import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.event.AgentEndEvent;
 import io.agentscope.core.event.AgentEvent;
 import io.agentscope.core.event.AgentStartEvent;
+import io.agentscope.core.event.ModelCallEndEvent;
+import io.agentscope.core.event.ModelCallStartEvent;
 import io.agentscope.core.event.TextBlockDeltaEvent;
 import io.agentscope.core.event.ToolCallStartEvent;
 import io.agentscope.core.event.ToolResultEndEvent;
@@ -30,24 +32,21 @@ public class AgentScopeSalesService {
 
     private final ReActAgent agentScopeSalesAgent;
 
-    public Mono<String> chat(String sessionId, String message) {
+    public Mono<AgentScopeChatResult> chat(String sessionId, String message) {
         Invocation invocation = invocation(sessionId);
         return agentScopeSalesAgent
                 .call(List.of(new UserMessage(withCurrentDate(message))), invocation.runtimeContext())
                 .switchIfEmpty(Mono.error(new IllegalStateException("AgentScope 未返回响应")))
-                .map(result -> result.getTextContent() == null ? "" : result.getTextContent());
+                .map(result -> new AgentScopeChatResult(
+                        result.getTextContent() == null ? "" : result.getTextContent(),
+                        invocation.tracker().snapshot()));
     }
 
     public Flux<AgentScopeStreamEvent> stream(String sessionId, String message) {
         Invocation invocation = invocation(sessionId);
         return agentScopeSalesAgent
                 .streamEvents(new UserMessage(withCurrentDate(message)), invocation.runtimeContext())
-                .<AgentScopeStreamEvent>handle((agentEvent, sink) -> {
-                    AgentScopeStreamEvent event = mapEvent(agentEvent);
-                    if (event != null) {
-                        sink.next(event);
-                    }
-                })
+                .concatMap(agentEvent -> mapEvents(agentEvent, invocation.tracker()))
                 .onErrorResume(error -> {
                     log.error("AgentScope 流式调用失败: sessionId={}", sessionId, error);
                     return Flux.just(new AgentScopeStreamEvent("error", "服务暂时不可用，请稍后重试"));
@@ -69,13 +68,16 @@ public class AgentScopeSalesService {
 
         SalesAgentRuntimeContext salesContext =
                 new SalesAgentRuntimeContext(user, DataScope.from(user));
+        String requestId = UUID.randomUUID().toString();
+        AgentScopeExecutionTracker tracker = new AgentScopeExecutionTracker(requestId);
         RuntimeContext runtimeContext = RuntimeContext.builder()
                 .userId(user.userId().toString())
                 .sessionId(sessionId)
                 .put(SalesAgentRuntimeContext.class, salesContext)
-                .put("request_id", UUID.randomUUID().toString())
+                .put(AgentScopeExecutionTracker.class, tracker)
+                .put("request_id", requestId)
                 .build();
-        return new Invocation(runtimeContext);
+        return new Invocation(runtimeContext, tracker);
     }
 
     private String withCurrentDate(String message) {
@@ -90,6 +92,12 @@ public class AgentScopeSalesService {
         if (event instanceof TextBlockDeltaEvent text) {
             return new AgentScopeStreamEvent("token", text.getDelta());
         }
+        if (event instanceof ModelCallStartEvent modelStart) {
+            return new AgentScopeStreamEvent("model_start", modelStart.getReplyId());
+        }
+        if (event instanceof ModelCallEndEvent modelEnd) {
+            return new AgentScopeStreamEvent("model_end", modelEnd.getUsage());
+        }
         if (event instanceof ToolCallStartEvent toolStart) {
             return new AgentScopeStreamEvent("tool_start", toolStart.getToolCallName());
         }
@@ -97,12 +105,23 @@ public class AgentScopeSalesService {
             return new AgentScopeStreamEvent(
                     "tool_end", toolEnd.getToolCallName() + ":" + toolEnd.getState());
         }
-        if (event instanceof AgentEndEvent) {
-            return new AgentScopeStreamEvent("done", "[DONE]");
-        }
         return null;
     }
 
-    private record Invocation(RuntimeContext runtimeContext) {
+    private Flux<AgentScopeStreamEvent> mapEvents(
+            AgentEvent event,
+            AgentScopeExecutionTracker tracker) {
+        if (event instanceof AgentEndEvent) {
+            tracker.complete("success");
+            return Flux.just(
+                    new AgentScopeStreamEvent("summary", tracker.snapshot()),
+                    new AgentScopeStreamEvent("done", "[DONE]"));
+        }
+        return Mono.justOrEmpty(mapEvent(event)).flux();
+    }
+
+    private record Invocation(
+            RuntimeContext runtimeContext,
+            AgentScopeExecutionTracker tracker) {
     }
 }

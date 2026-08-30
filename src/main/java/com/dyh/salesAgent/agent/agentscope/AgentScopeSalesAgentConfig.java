@@ -65,6 +65,7 @@ public class AgentScopeSalesAgentConfig {
             Model agentScopeDashScopeModel,
             AgentStateStore agentScopeStateStore,
             AgentScopeSalesTools salesTools,
+            AgentScopeObservabilityMiddleware observabilityMiddleware,
             @Value("${sales-agent.agentscope.max-iters:10}") int maxIters) {
         Toolkit toolkit = new Toolkit();
         toolkit.registerTool(salesTools);
@@ -74,6 +75,7 @@ public class AgentScopeSalesAgentConfig {
                 .sysPrompt(SYSTEM_PROMPT)
                 .model(agentScopeDashScopeModel)
                 .toolkit(toolkit)
+                .middleware(observabilityMiddleware)
                 .stateStore(agentScopeStateStore)
                 .maxIters(maxIters)
                 .build();

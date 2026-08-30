@@ -26,17 +26,16 @@ public class AgentScopeSalesController {
     private final AgentScopeSalesService agentScopeSalesService;
 
     @PostMapping("/chat")
-    public Mono<ResponseEntity<ChatResponse>> chat(@Valid @RequestBody ChatRequest request) {
-        long start = System.currentTimeMillis();
+    public Mono<ResponseEntity<AgentScopeChatResponse>> chat(@Valid @RequestBody ChatRequest request) {
         return agentScopeSalesService.chat(request.sessionId(), request.message())
-                .map(reply -> ResponseEntity.ok(new ChatResponse(
-                        request.sessionId(), reply, System.currentTimeMillis() - start)));
+                .map(result -> ResponseEntity.ok(new AgentScopeChatResponse(
+                        request.sessionId(), result.reply(), result.execution())));
     }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> chatStream(@Valid @RequestBody ChatRequest request) {
+    public Flux<ServerSentEvent<Object>> chatStream(@Valid @RequestBody ChatRequest request) {
         return agentScopeSalesService.stream(request.sessionId(), request.message())
-                .map(event -> ServerSentEvent.<String>builder()
+                .map(event -> ServerSentEvent.<Object>builder()
                         .event(event.event())
                         .data(event.data())
                         .build());

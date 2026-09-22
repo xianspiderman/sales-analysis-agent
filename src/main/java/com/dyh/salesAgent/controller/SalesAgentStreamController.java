@@ -34,19 +34,17 @@ public class SalesAgentStreamController {
             UserContext.runWith(userSnapshot, () -> salesAgent
                     .chatStream(memoryId, request.message(), LocalDate.now().toString())
                     .onPartialResponse(token -> {
-                        // onPartialResponse作用是每个token（词片）推送一个SSE事件
                         sink.next(ServerSentEvent.<String>builder()
                                 .event("token")
                                 .data(token)
                                 .build());
                     })
                     .onCompleteResponse(response -> {
-                        // 推送结束信号(done可以作为前端的业务结束标志)
                         sink.next(ServerSentEvent.<String>builder()
                                 .event("done")
                                 .data("[DONE]")
                                 .build());
-                        sink.complete(); // 负责真正结束服务器数据流
+                        sink.complete();
                         log.info("流式响应完成: sessionId={}", request.sessionId());
                     })
                     .onError(error -> {

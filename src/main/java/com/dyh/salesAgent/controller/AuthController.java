@@ -35,8 +35,7 @@ public class AuthController {
 
         StpUtil.login(rep.getId());
 
-        // 把用户信息写入 Sa-Token Session，后续请求从 Session 读取
-        // 这里必须set后面的WebMvcConfig.java的preHandle才能session.get
+        // Sa-Token Session 保存可信身份，由请求拦截器恢复到 UserContext。
         StpUtil.getSession()
                 .set("username", rep.getName())
                 .set("role",     rep.getRole())

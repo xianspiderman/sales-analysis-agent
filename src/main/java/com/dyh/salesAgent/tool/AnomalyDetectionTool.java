@@ -26,14 +26,14 @@ public class AnomalyDetectionTool {
     private final SalesQueryService queryService;
     private final ProductRepository productRepository;
     @Value("${sales-agent.tool.anomaly-threshold-days:5}")
-    private int zeroSaleThresholdDays;// 超过N天（默认 5 天），比如某产品最后一次出单距今天数
+    private int zeroSaleThresholdDays;
 
     @Value("${sales-agent.tool.trend-drop-threshold:0.3}")
-    private double trendDropThreshold;// 下降超过配置的threshold（默认30%）就预警
+    private double trendDropThreshold;
 
     @Tool("自动检测销售数据中的所有异常，包括：大区订单量骤降、产品连续零销售、" +
             "销售员退单率异常、销售员业绩骤降。适用于：有没有异常、风险排查、预警检测等场景。" +
-            "无需传入参数，系统根据当前用户权限自动扫描可见范围内的数据。")// 这里加入了"根据当前用户权限自动扫描"的描述
+            "无需传入参数，系统根据当前用户权限自动扫描可见范围内的数据。")
     public String detectAllAnomalies() {
 
         DataScope scope = UserContext.requireDataScope();
@@ -42,7 +42,7 @@ public class AnomalyDetectionTool {
 
         List<AnomalyDTO> anomalies = new ArrayList<>();
 
-        try {// 下面这些是把异常类型都扔进去
+        try {
             switch (scope.type()) {
                 case COMPANY, REGION -> {
                     anomalies.addAll(detectRegionDropAnomalies(scope));

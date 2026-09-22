@@ -26,9 +26,9 @@ public class ChatMemoryEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @PrePersist // 保存新实体时用
-    @PreUpdate // 修改已有实体时用
-    void touch() { //所以同一个touch()方法可以同时负责新增时间和更新时间，自动调用
+    @PrePersist
+    @PreUpdate
+    void touch() {
         updatedAt = LocalDateTime.now();
     }
 }

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS sa_sales_order (
                                 KEY idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='销售订单';
 
--- sa_chat_memory 表，先用MySQL持久化保存对话记录
+-- LangChain4j 对话记忆持久化表
 CREATE TABLE IF NOT EXISTS sa_chat_memory (
     id           BIGINT       NOT NULL AUTO_INCREMENT,
     session_id   VARCHAR(100) NOT NULL COMMENT '会话 ID',

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-/** 与旧 /agent 接口并行存在的 AgentScope Java 实验入口。 */
+/** AgentScope 单 ReActAgent 与 Supervisor 多 Agent 入口。 */
 @RestController
 @RequestMapping("/agentscope")
 @RequiredArgsConstructor

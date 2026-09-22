@@ -8,7 +8,7 @@
 |---|---|
 | `baseUrl` | `http://localhost:8087` |
 | `token` | 登录成功后填写响应中的 Token |
-| `demoPassword` | 本地演示账号的原始密码，不是 BCrypt 摘要 |
+| `localPassword` | `LocalSales@2026` |
 
 统一请求头：
 
@@ -19,16 +19,16 @@ Authorization: {{token}}
 
 登录接口和“未登录 401”测试不携带 `Authorization`。
 
-## 2. BCrypt 登录注意事项
+## 2. 本地初始化账号与 BCrypt
 
-`data.sql` 中以 `$2a$...` 开头的内容是 BCrypt 密码摘要，只能存入数据库，不能作为登录请求中的密码。
+`data.sql` 为本地初始化账号写入 `LocalSales@2026` 对应的 BCrypt 摘要。该固定口令仅用于本地初始化数据；登录请求传入原始口令，数据库只保存摘要。
 
-登录请求必须传入生成该摘要时使用的原始演示密码：
+登录请求：
 
 ```json
 {
   "loginName": "sales_director",
-  "password": "{{demoPassword}}"
+  "password": "{{localPassword}}"
 }
 ```
 
@@ -41,13 +41,13 @@ curl --location 'http://localhost:8087/auth/login' \
 --header 'Content-Type: application/json' \
 --data '{
   "loginName": "sales_director",
-  "password": "YOUR_LOCAL_DEMO_PASSWORD"
+  "password": "LocalSales@2026"
 }'
 ```
 
 预期：HTTP 200，并返回 `token`、`username`、`role`、`regionId` 和 `repId`。
 
-演示账号：
+本地初始化账号：
 
 | 角色 | 登录账号 |
 |---|---|
@@ -218,7 +218,7 @@ curl --location 'http://localhost:8087/test/tool/month-over-month' \
 2. 第二次日志出现“销售额缓存命中”。
 3. 总监、主管、销售员分别使用 `COMPANY`、`REGION`、`REP` 范围 Key。
 
-## 8. 同步 Agent
+## 8. LangChain4j 同步入口
 
 ```bash
 curl --location 'http://localhost:8087/agent/chat' \
@@ -234,7 +234,7 @@ curl --location 'http://localhost:8087/agent/chat' \
 
 服务端会把客户端 `sessionId` 转换成 `userId:sessionId` 后再读写 MySQL 对话记忆。可以让主管和销售员故意使用相同的 `sessionId` 分别提问：两者应各自开始独立会话，销售员的回答中不能出现主管上一轮的措辞或数据。
 
-## 9. SSE 流式 Agent
+## 9. LangChain4j SSE 入口
 
 ```bash
 curl --no-buffer --location 'http://localhost:8087/agent/chat/stream' \
@@ -259,7 +259,160 @@ data:[DONE]
 
 使用同一个主管 Token 测试同步与 SSE，两条链路的数据范围应一致。
 
-## 10. 其他 Tool 测试接口
+## 10. 统一入口与三种模式
+
+统一入口支持 `LANGCHAIN4J`、`AGENTSCOPE_SINGLE` 和 `AGENTSCOPE_TEAM`。请求省略 `mode` 时使用 `sales-agent.routing.default-mode`；`allow-request-override=true` 时可以在请求中指定模式。
+
+### 10.1 统一同步问答
+
+```bash
+curl --location 'http://localhost:8087/analysis/chat' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "routing-sync-001",
+  "message": "统计今年各大区销售额并生成柱状图",
+  "mode": "AGENTSCOPE_TEAM"
+}'
+```
+
+响应结构：
+
+```json
+{
+  "sessionId": "routing-sync-001",
+  "reply": "...",
+  "route": {
+    "requestedMode": "AGENTSCOPE_TEAM",
+    "actualMode": "AGENTSCOPE_TEAM",
+    "fallback": false
+  },
+  "execution": {
+    "requestId": "...",
+    "rootAgent": "sales-team-supervisor",
+    "status": "success"
+  }
+}
+```
+
+`execution` 在两种 AgentScope 模式下返回请求级执行摘要，在 `LANGCHAIN4J` 模式下为 `null`。摘要还包含总耗时、专家调用、推理轮次、模型调用、工具调用和 Token 用量。
+
+分别把 `mode` 改为以下值，可以从同一入口验证三种执行模式：
+
+| mode | 执行链路 |
+|---|---|
+| `LANGCHAIN4J` | LangChain4j AiServices |
+| `AGENTSCOPE_SINGLE` | AgentScope 单 ReActAgent |
+| `AGENTSCOPE_TEAM` | Supervisor 调度三类专家 |
+
+### 10.2 统一 SSE 问答
+
+```bash
+curl --no-buffer --location 'http://localhost:8087/analysis/chat/stream' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Accept: text/event-stream' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "routing-stream-001",
+  "message": "生成近6个月销售趋势折线图",
+  "mode": "AGENTSCOPE_SINGLE"
+}'
+```
+
+首个事件为 `route`：
+
+```text
+event:route
+data:{"requestedMode":"AGENTSCOPE_SINGLE","actualMode":"AGENTSCOPE_SINGLE","fallback":false}
+```
+
+AgentScope 模式随后可以输出 `agent_start`、`model_start`、`model_end`、`token`、`tool_start`、`tool_end`、`summary` 和 `done`。LangChain4j 模式通过统一入口输出 `token`、`tool_start`、`tool_end` 和 `done`。错误统一使用 `error` 事件。
+
+当主模式在首个 `token` 或 `tool_start` 之前抛出异常，并且路由配置启用 fallback 时，会先输出 `fallback` 事件，再执行配置的降级模式。`fallback` 事件中的 `requestedMode` 与 `actualMode` 可用于确认模式切换结果。
+
+### 10.3 清理指定模式会话
+
+```bash
+curl --location --request DELETE \
+'http://localhost:8087/analysis/session/routing-sync-001?mode=AGENTSCOPE_TEAM' \
+--header 'Authorization: YOUR_TOKEN'
+```
+
+## 11. AgentScope 专用入口
+
+### 11.1 单 ReActAgent 同步问答
+
+```bash
+curl --location 'http://localhost:8087/agentscope/chat' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "agentscope-single-001",
+  "message": "查询近6个月月度销售趋势"
+}'
+```
+
+响应包含 `sessionId`、`reply` 和 `execution`。单 ReActAgent 可以调用完整的 12 个销售工具。
+
+### 11.2 Supervisor 多 Agent 同步问答
+
+```bash
+curl --location 'http://localhost:8087/agentscope/team/chat' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "agentscope-team-001",
+  "message": "统计今年各大区销售额，生成柱状图并检查异常"
+}'
+```
+
+Supervisor 根据目标委派数据分析、图表生成和异常诊断专家。三类专家分别使用 8、3、1 个职责范围内的工具，结果由 Supervisor 汇总。
+
+### 11.3 AgentScope SSE
+
+单 ReActAgent：
+
+```bash
+curl --no-buffer --location 'http://localhost:8087/agentscope/chat/stream' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Accept: text/event-stream' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "agentscope-single-stream-001",
+  "message": "查询近6个月月度销售趋势"
+}'
+```
+
+Supervisor：
+
+```bash
+curl --no-buffer --location 'http://localhost:8087/agentscope/team/chat/stream' \
+--header 'Authorization: YOUR_TOKEN' \
+--header 'Accept: text/event-stream' \
+--header 'Content-Type: application/json' \
+--data '{
+  "sessionId": "agentscope-team-stream-001",
+  "message": "生成近6个月销售趋势折线图并检查异常"
+}'
+```
+
+流结束前的 `summary` 事件返回本次调用的执行摘要，最后一个业务完成事件为 `done`。
+
+### 11.4 AgentScope 会话隔离与清理
+
+AgentScope StateStore 使用登录用户 ID 与客户端 `sessionId` 隔离会话；Supervisor 使用 `team:` 命名空间，与同名的单 ReActAgent 会话隔离。
+
+```bash
+curl --location --request DELETE \
+'http://localhost:8087/agentscope/session/agentscope-single-001' \
+--header 'Authorization: YOUR_TOKEN'
+
+curl --location --request DELETE \
+'http://localhost:8087/agentscope/team/session/agentscope-team-001' \
+--header 'Authorization: YOUR_TOKEN'
+```
+
+## 12. Tool 测试接口
 
 | 方法 | 地址 | 用途 |
 |---|---|---|
@@ -275,7 +428,7 @@ data:[DONE]
 | POST | `/test/tool/pie-chart` | 饼图数据 |
 | POST | `/test/tool/detect-anomalies` | 异常检测 |
 
-## 11. 建议截图
+## 13. 运行结果截图
 
 - 正确登录响应。
 - 总监、主管、销售员三种排名结果对比。

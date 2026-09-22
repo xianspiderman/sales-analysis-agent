@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Supervisor + 三类销售专家的 AgentScope 多 Agent 实验配置。 */
+/** Supervisor + 三类销售专家的 AgentScope 多 Agent 配置。 */
 @Configuration
 public class AgentScopeSalesTeamConfig {
 

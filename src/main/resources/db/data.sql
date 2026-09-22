@@ -171,7 +171,7 @@ VALUES
 ('ORD-B07-008',12, 10,  4, '昆明春城生活电器有限公司',     12,  599.00,  7188.00,  3360.00,  3828.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL   1 DAY)),
 ('ORD-B07-009', 3, 13,  1, '苏州暖冬服饰有限公司',          5,  799.00,  3995.00,  1750.00,  2245.00, 'CANCELLED', DATE_SUB(CURDATE(), INTERVAL   3 DAY));
 
--- 统一本地测试订单中的占位客户名称。
+-- 统一本地测试订单的客户名称。
 UPDATE sa_sales_order SET customer_name = '上海云帆科技有限公司'      WHERE order_no = 'DEMO-E-150-01';
 UPDATE sa_sales_order SET customer_name = '杭州澄海信息技术有限公司'  WHERE order_no = 'DEMO-E-120-01';
 UPDATE sa_sales_order SET customer_name = '南京锐动体育用品有限公司'  WHERE order_no = 'DEMO-E-090-01';

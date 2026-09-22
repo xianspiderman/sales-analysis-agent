@@ -101,7 +101,7 @@ sales-agent:
 
 `allow-request-override=true` 时，请求中的 `mode` 优先；否则使用 `default-mode`。同步调用在主模式抛出异常后切换到 `fallback-mode`。SSE 调用仅在输出 `token` 或 `tool_start` 之前切换，确保一次响应只包含一条有效回答链路。同步响应的 `route` 字段包含请求模式、实际模式和 fallback 标记；SSE 通过 `route` 与 `fallback` 事件表达相同信息。
 
-原始模式入口同时保留：
+各执行模式同时提供专用入口：
 
 | 方法 | 地址 | 用途 |
 |---|---|---|
@@ -162,7 +162,7 @@ AgentScope SSE 映射以下事件：
 | `done` | `[DONE]` |
 | `error` | 安全错误信息 |
 
-统一 SSE 入口在业务事件前增加 `route`，发生模式切换时增加 `fallback`。LangChain4j 原始 SSE 入口输出 `token`、`done` 和 `error`；通过统一入口调用 LangChain4j 时还会映射 `tool_start` 与 `tool_end`。
+统一 SSE 入口在业务事件前增加 `route`，发生模式切换时增加 `fallback`。LangChain4j 专用 SSE 入口输出 `token`、`done` 和 `error`；通过统一入口调用 LangChain4j 时还会映射 `tool_start` 与 `tool_end`。
 
 AgentScope Middleware 覆盖 Agent、reasoning、model、tool 四层，记录阶段完成状态与耗时，并汇总模型、工具、专家调用和 Token 用量。同步响应的 `execution` 字段和 SSE 的 `summary` 事件包含：
 
@@ -181,7 +181,7 @@ src/main/java/com/dyh/salesAgent
 │  ├─ agentscope    ReActAgent、Supervisor、专家、工具适配、StateStore 与 Middleware
 │  └─ routing       三种执行模式的统一路由与 fallback
 ├─ config           Web、Redis、密码编码和指标配置
-├─ controller       登录、统一入口、原始模式入口和工具测试接口
+├─ controller       登录、统一入口、各模式专用入口和工具测试接口
 ├─ dto              查询结果与异常结果 DTO
 ├─ entity           JPA 实体
 ├─ memory           LangChain4j MySQL ChatMemory
@@ -266,7 +266,7 @@ GET http://localhost:8087/actuator/health
 不依赖外部服务的会话隔离测试：
 
 ```bash
-mvn -Dtest=UserScopedMemoryIdTest,UserScopedControllerMemoryTest test
+mvn "-Dtest=UserScopedMemoryIdTest,UserScopedControllerMemoryTest" test
 ```
 
 MySQL、Redis 与 DashScope 配置就绪后运行完整测试：

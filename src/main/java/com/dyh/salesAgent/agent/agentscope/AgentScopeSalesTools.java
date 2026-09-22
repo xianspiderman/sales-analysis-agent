@@ -31,7 +31,7 @@ public class AgentScopeSalesTools {
             @ToolParam(name = "endDate", description = "结束日期，格式 yyyy-MM-dd") String endDate,
             @ToolParam(name = "regionName", description = "大区名称；不限定大区时可省略", required = false) String regionName,
             @ToolParam(name = "repName", description = "销售员姓名；不限定销售员时可省略", required = false) String repName,
-            @ToolParam(name = "limit", description = "最多返回条数，默认 20，最大 50") int limit,
+            @ToolParam(name = "limit", description = "最多返回条数，范围 1 到 50") int limit,
             SalesAgentRuntimeContext context) {
         return UserContext.callWith(context.user(),
                 () -> salesQueryTool.queryOrders(startDate, endDate, regionName, repName, limit));
@@ -42,7 +42,7 @@ public class AgentScopeSalesTools {
             @ToolParam(name = "startDate", description = "开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate", description = "结束日期，格式 yyyy-MM-dd") String endDate,
             @ToolParam(name = "regionName", description = "大区名称；查询当前权限全部范围时可省略", required = false) String regionName,
-            @ToolParam(name = "topN", description = "返回前 N 名，默认 5，最大 20") int topN,
+            @ToolParam(name = "topN", description = "返回前 N 名，范围 1 到 20") int topN,
             SalesAgentRuntimeContext context) {
         return UserContext.callWith(context.user(),
                 () -> salesSummaryTool.getTopReps(startDate, endDate, regionName, topN));
@@ -61,13 +61,13 @@ public class AgentScopeSalesTools {
     public String getTopProducts(
             @ToolParam(name = "startDate", description = "开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate", description = "结束日期，格式 yyyy-MM-dd") String endDate,
-            @ToolParam(name = "topN", description = "排名数量，默认 10，最大 20；负数表示查询最差的 N 名") int topN,
+            @ToolParam(name = "topN", description = "排名数量的绝对值范围为 1 到 20；负数表示查询最差的 N 名") int topN,
             SalesAgentRuntimeContext context) {
         return UserContext.callWith(context.user(),
                 () -> salesSummaryTool.getTopProducts(startDate, endDate, topN));
     }
 
-    @Tool(name = "get_sales_summary", description = "查询指定时段内的总销售额、订单数等销售汇总数据。", readOnly = true)
+    @Tool(name = "get_sales_summary", description = "查询指定时段内的总销售额汇总。", readOnly = true)
     public String getSalesSummary(
             @ToolParam(name = "startDate", description = "开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate", description = "结束日期，格式 yyyy-MM-dd") String endDate,

@@ -34,7 +34,7 @@ public class SalesSummaryTool {
             @P("查询开始日期，格式 yyyy-MM-dd") String startDate,
             @P("查询结束日期，格式 yyyy-MM-dd") String endDate,
             @P("大区名称，如：华东区。传 null 或空字符串表示查全公司") String regionName,
-            @P("返回前 N 名，默认 5，最大 20") int topN) {
+            @P("返回前 N 名，范围 1 到 20") int topN) {
 
         log.info("工具调用-getTopReps: start={}, end={}, region={}, topN={}",
                 startDate, endDate, regionName, topN);
@@ -126,7 +126,7 @@ public class SalesSummaryTool {
     public String getTopProducts(
             @P("查询开始日期，格式 yyyy-MM-dd") String startDate,
             @P("查询结束日期，格式 yyyy-MM-dd") String endDate,
-            @P("返回前 N 名，默认 10，最大 20。负数表示查最差的 N 名") int topN) {
+            @P("排名数量的绝对值范围为 1 到 20。负数表示查最差的 N 名") int topN) {
 
         log.info("工具调用-getTopProducts: start={}, end={}, topN={}", startDate, endDate, topN);
 
@@ -166,7 +166,7 @@ public class SalesSummaryTool {
     /**
      * 某时段总销售额汇总
      */
-    @Tool("计算指定时段的总销售额、订单数等汇总数据。适用于：总销售额是多少、" +
+    @Tool("计算指定时段的总销售额汇总。适用于：总销售额是多少、" +
          "本月/本季/本年收入、某大区的整体业绩等场景。")
     public String getSalesSummary(
             @P("查询开始日期，格式 yyyy-MM-dd") String startDate,

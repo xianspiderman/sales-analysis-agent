@@ -338,7 +338,7 @@ curl --location --request DELETE \
 --header 'Authorization: YOUR_TOKEN'
 ```
 
-## 11. AgentScope 原始入口
+## 11. AgentScope 专用入口
 
 ### 11.1 单 ReActAgent 同步问答
 

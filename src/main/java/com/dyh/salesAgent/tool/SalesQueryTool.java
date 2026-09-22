@@ -28,7 +28,7 @@ public class SalesQueryTool {
             @P("查询结束日期，格式 yyyy-MM-dd，如 2024-11-30") String endDate,
             @P("大区名称，如：华东区、华南区、华北区、西南区。传 null 或空字符串表示查全公司") String regionName,
             @P("销售员姓名，如需按特定销售员筛选则传入，如：张磊。否则传 null 或空字符串") String repName,
-            @P("最多返回条数，默认 20，最大 50。避免返回数据过多") int limit) {
+            @P("最多返回条数，范围 1 到 50。避免返回数据过多") int limit) {
 
         log.info("工具调用-queryOrders: start={}, end={}, region={}, repName={}, limit={}",
                 startDate, endDate, regionName, repName, limit);

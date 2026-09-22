@@ -34,7 +34,6 @@ VALUES
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     login_name = VALUES(login_name),
-    password_hash = VALUES(password_hash),
     region_id = VALUES(region_id),
     role = VALUES(role),
     email = VALUES(email);

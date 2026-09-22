@@ -8,29 +8,29 @@ INSERT INTO sa_sales_region (id, name) VALUES
 ON DUPLICATE KEY UPDATE
     name = VALUES(name);
 
--- 销售员数据（保留原项目每区 1 名主管、2 名销售员，另有 1 名全国总监）
--- password_hash 只保存 BCrypt 摘要，不保存明文密码。
+-- 本地初始化账号：每区 1 名主管、2 名销售员，另有 1 名全国总监。
+-- password_hash 保存本地测试口令的 BCrypt 摘要，原始口令见 README。
 INSERT INTO sa_sales_rep
     (id, name, login_name, password_hash, region_id, role, email)
 VALUES
 -- 华东区
-(1,  '李明', 'east_manager',  '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 1, 'SALES_MANAGER',  'liming@jichi.com'),
-(2,  '张伟', 'east_zhangwei', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 1, 'SALES_REP',      'zhangwei@jichi.com'),
-(3,  '王芳', 'east_wangfang', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 1, 'SALES_REP',      'wangfang@jichi.com'),
+(1,  '李明', 'east_manager',  '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 1, 'SALES_MANAGER',  'liming@jichi.com'),
+(2,  '张伟', 'east_zhangwei', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 1, 'SALES_REP',      'zhangwei@jichi.com'),
+(3,  '王芳', 'east_wangfang', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 1, 'SALES_REP',      'wangfang@jichi.com'),
 -- 华南区
-(4,  '陈强', 'south_manager', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 2, 'SALES_MANAGER',  'chenqiang@jichi.com'),
-(5,  '刘洋', 'south_liuyang', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 2, 'SALES_REP',      'liuyang@jichi.com'),
-(6,  '赵雪', 'south_zhaoxue', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 2, 'SALES_REP',      'zhaoxue@jichi.com'),
+(4,  '陈强', 'south_manager', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 2, 'SALES_MANAGER',  'chenqiang@jichi.com'),
+(5,  '刘洋', 'south_liuyang', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 2, 'SALES_REP',      'liuyang@jichi.com'),
+(6,  '赵雪', 'south_zhaoxue', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 2, 'SALES_REP',      'zhaoxue@jichi.com'),
 -- 华北区
-(7,  '孙磊', 'north_manager', '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 3, 'SALES_MANAGER',  'sunlei@jichi.com'),
-(8,  '张磊', 'north_zhanglei','$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 3, 'SALES_REP',      'zhanglei@jichi.com'),
-(9,  '周丽', 'north_zhouli',  '$2a$10$AY8tbiQQ6jhRKRv1byFQmOZeVH.zqC97n67AbubjJ73jbWHq7hRSS', 3, 'SALES_REP',      'zhouli@jichi.com'),
+(7,  '孙磊', 'north_manager', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 3, 'SALES_MANAGER',  'sunlei@jichi.com'),
+(8,  '张磊', 'north_zhanglei','$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 3, 'SALES_REP',      'zhanglei@jichi.com'),
+(9,  '周丽', 'north_zhouli',  '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 3, 'SALES_REP',      'zhouli@jichi.com'),
 -- 西南区
-(10, '吴刚', 'west_manager',  '$2a$10$Pwfn9T/IN/8CINilUpiEb.hhEqdZKFYZH1jZAJVSpMMtJNDy.iNMW', 4, 'SALES_MANAGER',  'wugang@jichi.com'),
-(11, '郑华', 'west_zhenghua', '$2a$10$BMAXLdFCtj7xhCwcSlACQuXqDDiWsFLJXHWBcuOlG0S52t7IcLe6C', 4, 'SALES_REP',      'zhenghua@jichi.com'),
-(12, '林敏', 'west_linmin',   '$2a$10$f8se39gksmwJdgpF/ZB7cuwy61lTgrxgJjzweyfR.DltoLwFc2kl6', 4, 'SALES_REP',      'linmin@jichi.com'),
+(10, '吴刚', 'west_manager',  '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 4, 'SALES_MANAGER',  'wugang@jichi.com'),
+(11, '郑华', 'west_zhenghua', '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 4, 'SALES_REP',      'zhenghua@jichi.com'),
+(12, '林敏', 'west_linmin',   '$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 4, 'SALES_REP',      'linmin@jichi.com'),
 -- 总监（全国）
-(13, '黄总', 'sales_director','$2a$10$um9w2hlmVWNciryy6HHZ2.D3MVwy9tfFtkAQh0YwdqIShPgisMFGK', 1, 'SALES_DIRECTOR', 'huang@jichi.com')
+(13, '黄总', 'sales_director','$2a$10$fitA7TSZjW2r0sLhVNb1ZeLqP0fGODUX21oENJ/0KL9wdQqxpPajm', 1, 'SALES_DIRECTOR', 'huang@jichi.com')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     login_name = VALUES(login_name),
@@ -133,7 +133,7 @@ VALUES
 -- B05：约 3 个月前（张磊开始掉量，SKU-8821 仍正常销售）
 ('ORD-B05-001', 2,  2,  1, '杭州未来科技城采购中心',       10, 7999.00, 79990.00, 51000.00, 28990.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL  82 DAY)),
 ('ORD-B05-002', 3, 15,  1, '上海海派时尚有限公司',          6, 2599.00, 15594.00,  6600.00,  8994.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL  78 DAY)),
--- 张磊本阶段只有 1 单，为后续“业绩骤降”提供对比数据
+-- 张磊本阶段只有 1 单，用于“业绩骤降”场景的对比数据
 ('ORD-B05-003', 8,  9,  3, '北京京北公共服务有限公司',      3, 3299.00,  9897.00,  5700.00,  4197.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL  74 DAY)),
 ('ORD-B05-004', 5,  7,  2, '珠海洁净家电有限公司',          5, 4990.00, 24950.00, 14000.00, 10950.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL  72 DAY)),
 ('ORD-B05-005', 6, 14,  2, '深圳南山运动生活有限公司',     20,  699.00, 13980.00,  6200.00,  7780.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL  70 DAY)),
@@ -172,7 +172,7 @@ VALUES
 ('ORD-B07-008',12, 10,  4, '昆明春城生活电器有限公司',     12,  599.00,  7188.00,  3360.00,  3828.00, 'COMPLETED', DATE_SUB(CURDATE(), INTERVAL   1 DAY)),
 ('ORD-B07-009', 3, 13,  1, '苏州暖冬服饰有限公司',          5,  799.00,  3995.00,  1750.00,  2245.00, 'CANCELLED', DATE_SUB(CURDATE(), INTERVAL   3 DAY));
 
--- 修正上一版补充数据中的占位客户名称；只更新这些明确的演示订单，不删除订单。
+-- 统一本地测试订单中的占位客户名称。
 UPDATE sa_sales_order SET customer_name = '上海云帆科技有限公司'      WHERE order_no = 'DEMO-E-150-01';
 UPDATE sa_sales_order SET customer_name = '杭州澄海信息技术有限公司'  WHERE order_no = 'DEMO-E-120-01';
 UPDATE sa_sales_order SET customer_name = '南京锐动体育用品有限公司'  WHERE order_no = 'DEMO-E-090-01';

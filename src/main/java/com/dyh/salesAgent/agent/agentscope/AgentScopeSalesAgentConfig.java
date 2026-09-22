@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 
-/** AgentScope Java 销售分析 Agent 的独立配置，不影响现有 LangChain4j Bean。 */
+/** AgentScope 单 ReActAgent 的模型、状态存储、工具与 Middleware 配置。 */
 @Configuration
 public class AgentScopeSalesAgentConfig {
 

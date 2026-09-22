@@ -1,21 +1,21 @@
 package com.dyh.salesAgent.controller;
-// 工具还没有集成进Agent，先写一个简单的Controller单独测试一下，工具统一在这里测试
 import com.dyh.salesAgent.tool.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** 直接验证销售工具的参数校验、数据权限、Redis 缓存和查询结果。 */
 @RestController
 @RequestMapping("/test/tool")
 @RequiredArgsConstructor
 public class ToolTestController {
 
-    private final SalesQueryTool salesQueryTool;//工具1，具体数据
-    private final SalesSummaryTool salesSummaryTool;//工具2，数据总结
-    private final SalesTrendTool salesTrendTool;//工具3，趋势分析
-    private final ChartGeneratorTool chartGeneratorTool;//工具4，画图
-    private final AnomalyDetectionTool anomalyDetectionTool;//工具5，异常数据预警
+    private final SalesQueryTool salesQueryTool;
+    private final SalesSummaryTool salesSummaryTool;
+    private final SalesTrendTool salesTrendTool;
+    private final ChartGeneratorTool chartGeneratorTool;
+    private final AnomalyDetectionTool anomalyDetectionTool;
 
-    // 工具一
+    // 订单查询
     record QueryRequest(String startDate, String endDate,
                         String regionName, String reqName, int limit) {}
 
@@ -25,7 +25,7 @@ public class ToolTestController {
                 req.startDate(), req.endDate(), req.regionName(), req.reqName(), req.limit());
     }
 
-    // 工具二
+    // 汇总与排名
     record RankRequest(String startDate, String endDate, String regionName, int topN) {}
     record RangeRequest(String startDate, String endDate) {}
     record ProductRankRequest(String startDate, String endDate, int topN) {}
@@ -46,7 +46,7 @@ public class ToolTestController {
         return salesSummaryTool.getTopProducts(req.startDate(), req.endDate(), req.topN());
     }
 
-    // 工具三测试
+    // 趋势分析
     record MomRequest(String currentStart, String currentEnd,
                       String prevStart, String prevEnd, String regionName) {}
     record YoyRequest(String startDate, String endDate, String regionName) {}
@@ -70,7 +70,7 @@ public class ToolTestController {
         return salesTrendTool.getMonthlyTrend(req.months(), req.regionName());
     }
 
-    // 工具四
+    // 图表生成
     record LineChartRequest(int months, String regionName, String title) {}
     record BarChartRequest(String dimension, String startDate, String endDate, String title) {}
     record PieChartRequest(String dimension, String startDate, String endDate, String title) {}
@@ -92,7 +92,7 @@ public class ToolTestController {
                 req.dimension(), req.startDate(), req.endDate(), req.title());
     }
 
-    // 工具五
+    // 异常检测
     @PostMapping("/detect-anomalies")
     public String detectAnomalies() {
         return anomalyDetectionTool.detectAllAnomalies();

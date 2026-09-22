@@ -117,7 +117,7 @@ public class AgentScopeSalesService {
 
     private Invocation invocation(String sessionId, String rootAgentName) {
         UserContext.UserInfo user = UserContext.requireCurrent();
-        // 复用旧会话 ID 规则完成空值和长度校验，但 AgentScope 中仍分别存储 userId 与 sessionId。
+        // 统一执行客户端 sessionId 的格式和长度校验；AgentScope 分别保存 userId 与 sessionId。
         UserScopedMemoryId.from(user, sessionId);
 
         SalesAgentRuntimeContext salesContext =

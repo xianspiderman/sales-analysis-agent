@@ -12,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * AgentScope Toolkit 到现有工具实现的桥接层。
- * 第一阶段保留旧工具中的校验、DataScope、缓存和结果格式，只替换 Agent 编排框架。
+ * AgentScope Toolkit 到共享销售工具实现的适配层。
+ * 三种执行模式复用参数校验、DataScope、缓存、查询链路和结果格式。
  */
 @Component
 @RequiredArgsConstructor

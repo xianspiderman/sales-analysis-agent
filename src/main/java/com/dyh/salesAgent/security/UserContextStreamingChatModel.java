@@ -21,7 +21,7 @@ public final class UserContextStreamingChatModel implements StreamingChatModel {
     private final StreamingChatModel delegate;
 
     public UserContextStreamingChatModel(StreamingChatModel delegate) {
-        // 构造时保存原始模型，后续所有模型调用和元数据查询仍交给它完成。
+        // 构造时保存原始模型，所有模型调用和元数据查询仍交给它完成。
         this.delegate = delegate;
     }
 

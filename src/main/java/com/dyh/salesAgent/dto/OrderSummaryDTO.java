@@ -1,5 +1,5 @@
 package com.dyh.salesAgent.dto;
-// OrderSummaryDTO.java（工具返回用，这节实际用 String，DTO 留给后续）
+// 销售汇总结果 DTO。
 import java.math.BigDecimal;
 import java.time.LocalDate;
 

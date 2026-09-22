@@ -46,7 +46,7 @@ public class UserContext {
 
     /**
      * 在指定身份下执行有返回值的动作。
-     * AgentScope 工具通过 RuntimeContext 获取身份后，用此方法桥接尚未解耦的旧工具实现。
+     * AgentScope 工具通过 RuntimeContext 获取可信身份后，使用该方法调用共享销售工具。
      */
     public static <T> T callWith(UserInfo user, Supplier<T> action) {
         UserInfo previous = HOLDER.get();

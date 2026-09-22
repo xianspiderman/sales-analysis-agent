@@ -1,5 +1,4 @@
 package com.dyh.salesAgent.tool;
-//  用户问趋势问题时调工具三，用户说画图时调工具四。两个工具各自独立查数据库，不存在数据传递关系——工具四自己通过SalesQueryService拿数据并生成ECharts JSON，不依赖工具三的输出。
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dyh.salesAgent.dto.MonthlyTrendDTO;
 import com.dyh.salesAgent.dto.ProductSalesDTO;
@@ -21,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** 通过共享查询服务生成 ECharts option JSON。 */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -168,7 +168,7 @@ public class ChartGeneratorTool {
                     return item;
                 }).toList();
             } else {
-                // 按品类汇总（需要 Service 层支持，这里简化实现）
+                // 按产品品类汇总销售额。
                 List<ProductSalesDTO> products = queryService.queryProductRanking(scope, dates.start(), dates.end(), 100);
                 Map<String, BigDecimal> categoryMap = new LinkedHashMap<>();
                 for (ProductSalesDTO p : products) {

@@ -86,7 +86,6 @@ public class SalesQueryService {
             // row[0] 是数据库返回的 repId；JPA 聚合结果类型用 Number 接收后再转 long 最稳妥。
             Long id = ((Number) row[0]).longValue();
             SalesRep rep = reps.get(id);
-            // 这里 orderCount 需要单独查，简化处理用 0
             return rep == null ? null : new RepSalesDTO(id, rep.getName(), rep.getRegionId(),
                     regions.getOrDefault(rep.getRegionId(), "未知"), decimal(row[1]), 0);
         }).filter(Objects::nonNull).collect(Collectors.toList());
